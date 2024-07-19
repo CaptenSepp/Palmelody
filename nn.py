@@ -17,48 +17,49 @@ np.set_printoptions(threshold=sys.maxsize)
 drive.mount('/content/drive')
 
 # Load the CSV files
-train_file_path = '/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/gestures_b.csv'
-train2_file_path = '/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/gestures.csv'
-train3_file_path = '/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/gestures_1207.csv'
+train_file_path_1 = '/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/gestures_b.csv'
+train_file_path_2 = '/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/gestures.csv'
+train_file_path_3 = '/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/gestures_1207.csv'
 validation_file_path = '/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/gestures_n.csv'
-train_data = pd.read_csv(train_file_path, header=None)
-train2_data = pd.read_csv(train2_file_path, header=None)
-train3_data = pd.read_csv(train2_file_path, header=None)
+train_data_1 = pd.read_csv(train_file_path_1, header=None)
+train_data_2 = pd.read_csv(train_file_path_2, header=None)
+train_data_3 = pd.read_csv(train_file_path_2, header=None)
 validation_data = pd.read_csv(validation_file_path, header=None)
 
 
-X0 = train_data.iloc[:, 1:].values  # Features
-y0 = train_data.iloc[:, 0].values   # Labels
-X1 = train2_data.iloc[:, 1:].values  # Features
-y1 = train2_data.iloc[:, 0].values   # Labels
-X3 = train3_data.iloc[:, 1:].values  # Features
-y3 = train3_data.iloc[:, 0].values   # Labels
-X2 = validation_data.iloc[:, 1:].values  # Features
-y2 = validation_data.iloc[:, 0].values   # Labels
+x_0 = train_data_1.iloc[:, 1:].values  # Features
+y_0 = train_data_1.iloc[:, 0].values   # Labels
+x_1 = train_data_2.iloc[:, 1:].values  # Features
+y_1 = train_data_2.iloc[:, 0].values   # Labels
+x_2 = train_data_3.iloc[:, 1:].values  # Features
+y_2 = train_data_3.iloc[:, 0].values   # Labels
+x_3 = validation_data.iloc[:, 1:].values  # Features
+y_3 = validation_data.iloc[:, 0].values   # Labels
 
-X = np.concatenate((X0, X1, X2, X3), axis=0)
-y = np.concatenate((y0, y1, y2, y3), axis=0)
+x = np.concatenate((x_0, x_1, x_2, x_3), axis=0)
+y = np.concatenate((y_0, y_1, y_2, y_3), axis=0)
 
-print(X.shape)
-X_train, X_validation, y_train, y_validation = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=True)
+print(x.shape)
+x_train, x_validation, y_train, y_validation = train_test_split(x, y, test_size=0.2, random_state=42, shuffle=True)
 
 # Normalize the features (fit on training data only)
 scaler = MinMaxScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_validation_scaled = scaler.transform(X_validation)
+x_train_scaled = scaler.fit_transform(x_train)
+x_validation_scaled = scaler.transform(x_validation)
 
 # Save the preprocessed data in .npy format
-np.save('/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/results/X_train_scaled.npy', X_train_scaled)
+np.save('/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/results/x_train_scaled.npy', x_train_scaled)
 np.save('/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/results/y_train.npy', y_train)
-np.save('/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/results/X_validation_scaled.npy', X_validation_scaled)
+np.save('/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/results/x_validation_scaled.npy', x_validation_scaled)
 np.save('/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/results/y_validation.npy', y_validation)
 
 # Load preprocessed data
-X_train = np.load('/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/results/X_train_scaled.npy')
+x_train = np.load('/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/results/x_train_scaled.npy')
 y_train = np.load('/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/results/y_train.npy')
-X_validation = np.load('/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/results/X_validation_scaled.npy')
+x_validation = np.load('/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/results/x_validation_scaled.npy')
 y_validation = np.load('/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/results/y_validation.npy')
 
+#//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 # Create a custom dataset
 class GestureDataset(Dataset):
     def __init__(self, X, y):
@@ -72,8 +73,8 @@ class GestureDataset(Dataset):
         return self.X[idx], self.y[idx]
 
 # die Daten für PyTorch kompatibel zu machen.
-train_dataset = GestureDataset(X_train, y_train)
-validation_dataset = GestureDataset(X_validation, y_validation)
+train_dataset = GestureDataset(x_train, y_train)
+validation_dataset = GestureDataset(x_validation, y_validation)
 
 train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
 validation_loader = DataLoader(validation_dataset, batch_size=64, shuffle=False)
@@ -82,9 +83,9 @@ validation_loader = DataLoader(validation_dataset, batch_size=64, shuffle=False)
 class GestureNet(nn.Module):
     def __init__(self):
         super(GestureNet, self).__init__()
-        self.fc1 = nn.Linear(X_train.shape[1], 256)
-        self.fc2 = nn.Linear(256, 128)
-        self.fc3 = nn.Linear(128, 7)
+        self.fc1 = nn.Linear(x_train.shape[1], 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, 7)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(0.5)
 
@@ -93,12 +94,12 @@ class GestureNet(nn.Module):
         x = self.dropout(x)
         x = self.relu(self.fc2(x))
         x = self.dropout(x)
-        x = self.relu(self.fc3(x))
+        #x = self.relu(self.fc3(x))
+        x = self.fc3(x)
         return x
 
 # Device configuration
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # Das Gerät (CPU oder GPU) wird konfiguriert.
-
 
 # Das Modell, die Verlustfunktion, der Optimierer und die Metrik für die Genauigkeit werden initialisiert.
 model = GestureNet().to(device)
@@ -112,18 +113,17 @@ precision = Precision(task="multiclass", num_classes=7, average='macro').to(devi
 recall = Recall(task="multiclass", num_classes=7, average='macro').to(device)
 f1 = F1Score(task="multiclass", num_classes=7, average='macro').to(device)
 
-# Lists to store metrics ************************************************************************
+# Lists to store metrics
 train_losses, val_losses = [], []
 train_accuracies, val_accuracies = [], []
 train_precisions, val_precisions = [], []
 train_recalls, val_recalls = [], []
 
-
 # Training loop
 num_epochs = 25
 
 for epoch in range(num_epochs):
-    model.train() # train() sets the modules in the network in training mode. It tells our model that we are currently in the training phase so the model keeps some layers, like dropout, batch-normalization which behaves differently depends on the current phase, active. whereas the model. eval() does the opposite.
+    model.train() # It tells our model that we are currently in the training phase so the model keeps some layers, like dropout, batch-normalization which behaves differently depends on the current phase, active. eval() does opposite.
     train_loss, correct_train = 0, 0
     for inputs, labels in train_loader:
         # Verschiebt die Eingaben und Labels auf das konfigurierte Gerät (CPU oder GPU).
@@ -140,7 +140,6 @@ for epoch in range(num_epochs):
     train_accuracy = correct_train / len(train_loader)
     train_losses.append(train_loss)
     train_accuracies.append(train_accuracy)
-    # print(f'Epoch {epoch+1}, Train -- Loss: {correct_train:.4f}')
 
     # Validation
     model.eval()
@@ -155,7 +154,6 @@ for epoch in range(num_epochs):
             precision(outputs, labels)
             recall(outputs, labels)
 
-
     val_loss /= len(validation_loader)
     val_accuracy = correct_val / len(validation_loader)
     val_losses.append(val_loss)
@@ -165,10 +163,14 @@ for epoch in range(num_epochs):
 
     scheduler.step(train_loss)
     scheduler.step(val_loss)
-    print(f'Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}')
-    print(f'val Precision: {precision.compute():.4f}, val Recall: {recall.compute():.4f}')
+    print(f'Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}, val Precision: {precision.compute():.4f}, val Recall: {recall.compute():.4f}')
+
+# Save the trained model
+model_path = '/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/results/gesture_model.pth'
+torch.save(model.state_dict(), model_path)
 
 
+#//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 import matplotlib.pyplot as plt
 
 # Plot the results

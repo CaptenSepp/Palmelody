@@ -1,6 +1,5 @@
 import csv
 import cv2 as cv
-import numpy as np
 import mediapipe.python.solutions.hands as mp_hands
 import mediapipe.python.solutions.drawing_utils as drawing
 import mediapipe.python.solutions.drawing_styles as drawing_styles

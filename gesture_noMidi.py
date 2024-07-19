@@ -7,19 +7,24 @@ import mediapipe.python.solutions.drawing_styles as drawing_styles
 import torch.nn as nn
 import time
 
+
 #-------------------------------------- Methoden -------------------------------------------#
 
 class GestureNet(nn.Module):
     def __init__(self):
         super(GestureNet, self).__init__()
-        self.fc1 = nn.Linear(42, 256)
-        self.fc2 = nn.Linear(256, 7)
+        self.fc1 = nn.Linear(42, 244)
+        self.fc2 = nn.Linear(244, 106)
+        self.fc3 = nn.Linear(106, 7)
         self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(0.247)
 
     def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = self.relu(x)
-        x = self.fc2(x)
+        x = self.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = self.relu(self.fc2(x))
+        x = self.dropout(x)
+        x = self.relu(self.fc3(x))
         return x
 
 # Initialisierung
@@ -48,7 +53,7 @@ index = None
 
 model = GestureNet()
 # Load the trained model
-model.load_state_dict(torch.load('gesture_model_1407.pth'))
+model.load_state_dict(torch.load('gesture_model_1907_opt.pth', map_location=torch.device('cpu')))
 model.eval()
 
 # Initialize the Hands model
