@@ -1,3 +1,7 @@
+!pip install torchmetrics
+!pip install optuna
+!pip install tensorboard
+
 from google.colab import drive
 import pandas as pd
 import numpy as np
@@ -8,13 +12,24 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torchmetrics import Accuracy, Precision, Recall, F1Score
+from torch.utils.tensorboard import SummaryWriter
 import random
 import sys
+import os
 
 np.set_printoptions(threshold=sys.maxsize)
 
-# Mount Google Drive
 drive.mount('/content/drive')
+
+# Function to unmount and remount Google Drive
+# def remount_drive():
+#     drive_path = '/content/drive'
+#     if os.path.ismount(drive_path):
+#         !fusermount -u drive_path
+#     drive.mount(drive_path)
+
+# # Remount the drive
+# remount_drive()
 
 # Load the CSV files
 train_file_path_1 = '/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/gestures_b.csv'
@@ -83,11 +98,11 @@ validation_loader = DataLoader(validation_dataset, batch_size=64, shuffle=False)
 class GestureNet(nn.Module):
     def __init__(self):
         super(GestureNet, self).__init__()
-        self.fc1 = nn.Linear(x_train.shape[1], 128)
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 7)
+        self.fc1 = nn.Linear(x_train.shape[1], 244)
+        self.fc2 = nn.Linear(244, 106)
+        self.fc3 = nn.Linear(106, 7)
         self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(0.5)
+        self.dropout = nn.Dropout(0.247)
 
     def forward(self, x):
         x = self.relu(self.fc1(x))
@@ -105,13 +120,17 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # Das Ger√
 model = GestureNet().to(device)
 criterion = nn.CrossEntropyLoss()
 
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+optimizer = optim.Adam(model.parameters(), lr=0.00148)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10)
 
 accuracy = Accuracy(task="multiclass", num_classes=7).to(device)
 precision = Precision(task="multiclass", num_classes=7, average='macro').to(device)
 recall = Recall(task="multiclass", num_classes=7, average='macro').to(device)
 f1 = F1Score(task="multiclass", num_classes=7, average='macro').to(device)
+
+# Initialize TensorBoard writer
+writer = SummaryWriter(log_dir='/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/tensorboard_logs')
+
 
 # Lists to store metrics
 train_losses, val_losses = [], []
@@ -120,7 +139,7 @@ train_precisions, val_precisions = [], []
 train_recalls, val_recalls = [], []
 
 # Training loop
-num_epochs = 25
+num_epochs = 47
 
 for epoch in range(num_epochs):
     model.train() # It tells our model that we are currently in the training phase so the model keeps some layers, like dropout, batch-normalization which behaves differently depends on the current phase, active. eval() does opposite.
@@ -140,6 +159,10 @@ for epoch in range(num_epochs):
     train_accuracy = correct_train / len(train_loader)
     train_losses.append(train_loss)
     train_accuracies.append(train_accuracy)
+
+    # Log training metrics to TensorBoard
+    writer.add_scalar('Loss/train', train_loss, epoch)
+    writer.add_scalar('Accuracy/train', train_accuracy, epoch)
 
     # Validation
     model.eval()
@@ -161,14 +184,30 @@ for epoch in range(num_epochs):
     val_precisions.append(precision.compute().item())
     val_recalls.append(recall.compute().item())
 
+    # Log validation metrics to TensorBoard
+    writer.add_scalar('Loss/validation', val_loss, epoch)
+    writer.add_scalar('Accuracy/validation', val_accuracy, epoch)
+    writer.add_scalar('Precision/validation', precision.compute().item(), epoch)
+    writer.add_scalar('Recall/validation', recall.compute().item(), epoch)
+
     scheduler.step(train_loss)
     scheduler.step(val_loss)
     print(f'Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}, val Precision: {precision.compute():.4f}, val Recall: {recall.compute():.4f}')
 
-# Save the trained model
-model_path = '/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/results/gesture_model.pth'
+# Close the TensorBoard writer
+writer.close()
+
+# # in VSCode Save the trained model and Load the model state dictionary and map it to the CPU
+# model.load_state_dict(torch.load('gesture_model_1907_opt.pth', map_location=torch.device('cpu')))
+
+model_path = '/content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/results/gesture_model_1907.pth'
 torch.save(model.state_dict(), model_path)
 
+
+#//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+%load_ext tensorboard
+%tensorboard --logdir /content/drive/MyDrive/Uni/SMT_Colab/Final_Projekt/tensorboard_logs
 
 #//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 import matplotlib.pyplot as plt
